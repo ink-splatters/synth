@@ -26,7 +26,10 @@ pub struct RandomDateTime {
 impl RandomDateTime {
     pub fn new(range: StdRange<ChronoValue>, format: &str) -> Self {
         Self {
-            inner: Random::new_with(Uniform::new_inclusive(range.start, range.end))
+            inner: Random::new_with(
+                Uniform::new_inclusive(range.start, range.end)
+                    .expect("ChronoValue range should be valid"),
+            )
                 .infallible()
                 .try_once(),
             format: Arc::from(format.to_owned()),
@@ -43,7 +46,7 @@ impl SampleUniform for ChronoValue {
 impl UniformSampler for UniformChronoValue {
     type X = ChronoValue;
 
-    fn new<B1, B2>(low: B1, high: B2) -> Self
+    fn new<B1, B2>(low: B1, high: B2) -> Result<Self, rand::distr::uniform::Error>
     where
         B1: SampleBorrow<Self::X> + Sized,
         B2: SampleBorrow<Self::X> + Sized,
@@ -51,18 +54,18 @@ impl UniformSampler for UniformChronoValue {
         // safe because it has been asserted by rand API contract that
         // high >= low, which implies same variant of ChronoValue
         let delta = low.borrow().delta_to(high.borrow()).unwrap();
-        let inner = UniformDuration::new(StdDuration::default(), delta);
-        UniformChronoValue(low.borrow().clone(), inner)
+        let inner = UniformDuration::new(StdDuration::default(), delta)?;
+        Ok(UniformChronoValue(low.borrow().clone(), inner))
     }
 
-    fn new_inclusive<B1, B2>(low: B1, high: B2) -> Self
+    fn new_inclusive<B1, B2>(low: B1, high: B2) -> Result<Self, rand::distr::uniform::Error>
     where
         B1: SampleBorrow<Self::X> + Sized,
         B2: SampleBorrow<Self::X> + Sized,
     {
         let delta = low.borrow().delta_to(high.borrow()).unwrap();
-        let inner = UniformDuration::new_inclusive(StdDuration::default(), delta);
-        UniformChronoValue(low.borrow().clone(), inner)
+        let inner = UniformDuration::new_inclusive(StdDuration::default(), delta)?;
+        Ok(UniformChronoValue(low.borrow().clone(), inner))
     }
 
     fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> Self::X {

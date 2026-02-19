@@ -13,7 +13,7 @@ use std::path::PathBuf;
 
 use crate::datasource::DataSource;
 use crate::sampler::SamplerOutput;
-use async_std::task;
+use smol::block_on;
 use synth_core::{DataSourceParams, Namespace, Value};
 
 use super::map_from_uri_query;
@@ -145,6 +145,6 @@ fn insert_data<T: DataSource>(
         Value::Array(elems) => elems,
         non_array => vec![non_array],
     };
-    task::block_on(datasource.insert_data(collection_name, &to_insert[..]))
+    block_on(datasource.insert_data(collection_name, &to_insert[..]))
         .with_context(|| format!("Failed to insert data for collection {collection_name}"))
 }

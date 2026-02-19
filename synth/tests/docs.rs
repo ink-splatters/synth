@@ -20,78 +20,80 @@ use helpers::{generate, generate_scenario};
 use regex::Regex;
 
 #[tmpl_ignore("./", exclude_dir = true, filter_extension = "md")]
-#[async_std::test]
-async fn PATH_IDENT() -> Result<()> {
-    let path = Path::new("../").join(PATH);
-    let tmp = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tmp");
-    let tmp = tmp.as_path();
+#[test]
+fn PATH_IDENT() -> Result<()> {
+    smol::block_on(async {
+        let path = Path::new("../").join(PATH);
+        let tmp = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tmp");
+        let tmp = tmp.as_path();
 
-    fs::create_dir_all(tmp)?;
-    env::set_current_dir(tmp)?;
-    let path = Path::new("../").join(path);
+        fs::create_dir_all(tmp)?;
+        env::set_current_dir(tmp)?;
+        let path = Path::new("../").join(path);
 
-    let ns = get_ns_dir(tmp, &path);
-    fs::create_dir_all(ns.join("scenarios"))?;
+        let ns = get_ns_dir(tmp, &path);
+        fs::create_dir_all(ns.join("scenarios"))?;
 
-    let mut expects = HashSet::new();
-    let mut scenarios = HashSet::new();
+        let mut expects = HashSet::new();
+        let mut scenarios = HashSet::new();
 
-    extract_code_blocks(&path)?
-        .into_iter()
-        .filter(is_json_block)
-        .try_for_each(|block| -> Result<()> {
-            let (expect, scenario_name) = write_code_block(&path, block, tmp)?;
+        extract_code_blocks(&path)?
+            .into_iter()
+            .filter(is_json_block)
+            .try_for_each(|block| -> Result<()> {
+                let (expect, scenario_name) = write_code_block(&path, block, tmp)?;
 
-            if let Some(expect) = expect {
-                expects.insert(expect);
-            }
+                if let Some(expect) = expect {
+                    expects.insert(expect);
+                }
 
-            if let Some(name) = scenario_name {
-                scenarios.insert(name);
-            }
+                if let Some(name) = scenario_name {
+                    scenarios.insert(name);
+                }
 
-            Ok(())
-        })?;
+                Ok(())
+            })?;
 
-    let ns = get_ns(&path).unwrap();
-    let actual = generate(&ns).await;
+        let ns = get_ns(&path).unwrap();
+        let actual = generate(&ns).await;
 
-    // Did we expect any errors for this document
-    if expects.is_empty() {
-        assert!(
-            actual.is_ok(),
-            "should not have error: {:?}\n",
-            actual.unwrap_err()
-        );
-    } else {
-        assert!(
-            actual.is_err(),
-            "should be one of the following errors: {expects:#?}\n"
-        );
+        // Did we expect any errors for this document
+        if expects.is_empty() {
+            assert!(
+                actual.is_ok(),
+                "should not have error: {:?}\n",
+                actual.unwrap_err()
+            );
+        } else {
+            assert!(
+                actual.is_err(),
+                "should be one of the following errors: {expects:#?}\n"
+            );
 
-        let err = actual.unwrap_err();
-        let err = format!("{err:?}");
+            let err = actual.unwrap_err();
+            let err = format!("{err:?}");
 
-        assert!(
-            expects.iter().any(|expect| err.contains(expect)),
-            "{err}\nshould contain one of the following errors: {expects:#?}"
-        );
-    }
+            assert!(
+                expects.iter().any(|expect| err.contains(expect)),
+                "{err}\nshould contain one of the following errors: {expects:#?}"
+            );
+        }
 
-    for scenario in scenarios {
-        let actual = generate_scenario(&ns, Some(scenario.clone())).await;
+        for scenario in scenarios {
+            let actual = generate_scenario(&ns, Some(scenario.clone())).await;
 
-        assert!(
-            actual.is_ok(),
-            "'{}' scenario should not have error: {:?}\n",
-            scenario,
-            actual.unwrap_err()
-        );
-    }
+            assert!(
+                actual.is_ok(),
+                "'{}' scenario should not have error: {:?}\n",
+                scenario,
+                actual.unwrap_err()
+            );
+        }
 
-    fs::remove_dir_all(ns)?;
+        fs::remove_dir_all(ns)?;
 
-    Ok(())
+        Ok(())
+    })
 }
 
 struct Line {

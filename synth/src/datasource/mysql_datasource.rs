@@ -3,7 +3,7 @@ use crate::datasource::relational_datasource::{
 };
 use crate::datasource::DataSource;
 use anyhow::{Context, Result};
-use async_std::task;
+use smol::block_on;
 use async_trait::async_trait;
 use rust_decimal::prelude::ToPrimitive;
 use rust_decimal::Decimal;
@@ -31,7 +31,7 @@ impl DataSource for MySqlDataSource {
     type ConnectParams = String;
 
     fn new(connect_params: &Self::ConnectParams) -> Result<Self> {
-        task::block_on(async {
+        block_on(async {
             let pool = MySqlPoolOptions::new()
                 .max_connections(3) //TODO expose this as a user config?
                 .connect(connect_params.as_str())
@@ -48,7 +48,6 @@ impl DataSource for MySqlDataSource {
 
 impl SqlxDataSource for MySqlDataSource {
     type DB = MySql;
-    type Arguments = sqlx::mysql::MySqlArguments;
     type Connection = sqlx::mysql::MySqlConnection;
 
     const IDENTIFIER_QUOTE: char = '`';

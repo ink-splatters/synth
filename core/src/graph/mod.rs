@@ -457,9 +457,12 @@ impl Encode<'_, Postgres> for Value {
         }
     }
 
-    fn encode_by_ref(&self, buf: &mut PgArgumentBuffer) -> IsNull {
+    fn encode_by_ref(
+        &self,
+        buf: &mut PgArgumentBuffer,
+    ) -> Result<IsNull, sqlx::error::BoxDynError> {
         match self {
-            Value::Null(_) => IsNull::Yes,
+            Value::Null(_) => Ok(IsNull::Yes),
             Value::Bool(b) => <bool as Encode<'_, Postgres>>::encode_by_ref(b, buf),
             Value::Number(num) => match *num {
                 Number::I8(i) => <i8 as Encode<'_, Postgres>>::encode_by_ref(&i, buf),
@@ -507,9 +510,9 @@ impl Encode<'_, Postgres> for Value {
 }
 
 impl Encode<'_, MySql> for Value {
-    fn encode_by_ref(&self, buf: &mut Vec<u8>) -> IsNull {
+    fn encode_by_ref(&self, buf: &mut Vec<u8>) -> Result<IsNull, sqlx::error::BoxDynError> {
         match self {
-            Value::Null(_) => IsNull::Yes,
+            Value::Null(_) => Ok(IsNull::Yes),
             Value::Bool(b) => <bool as Encode<'_, MySql>>::encode_by_ref(b, buf),
             Value::Number(num) => match *num {
                 Number::I8(i) => <i8 as Encode<'_, MySql>>::encode_by_ref(&i, buf),

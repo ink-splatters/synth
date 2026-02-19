@@ -1,7 +1,7 @@
 #![allow(clippy::assertions_on_result_states)]
 use super::prelude::*;
 
-use rand::distributions::uniform::SampleRange;
+use rand::distr::uniform::SampleRange;
 
 use num::{CheckedAdd, One, Zero};
 
@@ -30,18 +30,25 @@ macro_rules! any_range_int_impl {
         }
 
         impl SampleRange<$target> for AnyRange<$target> {
-            fn sample_single<R: rand::RngCore + ?Sized>(self, rng: &mut R) -> $target {
+            fn sample_single<R: rand::RngCore + ?Sized>(
+                self,
+                rng: &mut R,
+            ) -> Result<$target, rand::distr::uniform::Error> {
                 let low = match self.low {
                     Bound::Unbounded => panic!("cannot sample {} range unbounded on the left", stringify!($target)),
                     Bound::Included(low) => low,
                     Bound::Excluded(low) => low + 1
                 };
 
-                match self.high {
-                    Bound::Excluded(high) => rng.gen_range(low..high),
-                    Bound::Included(high) => rng.gen_range(low..=high),
-                    Bound::Unbounded => panic!("cannot sample {} range unbounded on the right", stringify!($target))
-                }
+                let sample = match self.high {
+                    Bound::Excluded(high) => rng.random_range(low..high),
+                    Bound::Included(high) => rng.random_range(low..=high),
+                    Bound::Unbounded => panic!(
+                        "cannot sample {} range unbounded on the right",
+                        stringify!($target)
+                    ),
+                };
+                Ok(sample)
             }
 
             fn is_empty(&self) -> bool {
@@ -70,7 +77,10 @@ macro_rules! any_range_float_impl {
         }
 
         impl SampleRange<$target> for AnyRange<$target> {
-            fn sample_single<R: rand::RngCore + ?Sized>(self, rng: &mut R) -> $target {
+            fn sample_single<R: rand::RngCore + ?Sized>(
+                self,
+                rng: &mut R,
+            ) -> Result<$target, rand::distr::uniform::Error> {
                 let low = match self.low {
                     Bound::Excluded(_)
                     | Bound::Unbounded => panic!("cannot sample {} range unbounded or open on the left", stringify!($target)),
@@ -83,11 +93,12 @@ macro_rules! any_range_float_impl {
                     Bound::Excluded(high) => (high, false)
                 };
 
-                if include_high {
-                    rng.gen_range(low..=high)
+                let sample = if include_high {
+                    rng.random_range(low..=high)
                 } else {
-                    rng.gen_range(low..high)
-                }
+                    rng.random_range(low..high)
+                };
+                Ok(sample)
             }
 
             fn is_empty(&self) -> bool {
@@ -157,7 +168,7 @@ fn into_finite_bound<N>(n: N, inclusive: bool) -> Bound<N> {
     }
 }
 
-/// Macroed implementation of [`Distribution`](rand::distributions::Distribution) for integer
+/// Macroed implementation of [`Distribution`](rand::distr::Distribution) for integer
 /// primitive ranges.
 ///
 /// The default behavior is to cast the lower and upper bounds of the range (instances
@@ -212,7 +223,7 @@ macro_rules! standard_int_range_step_impl {
 
         impl Distribution<$target> for StandardIntRangeStep<$unsigned, $larger> {
             fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> $target {
-                let num_steps = rng.gen_range(self.range.clone());
+                let num_steps = rng.random_range(self.range.clone());
                 let delta = num_steps * self.step;
                 (delta as $larger + self.low) as $target
             }
@@ -253,13 +264,13 @@ macro_rules! standard_float_range_step_impl {
                 let high = range_step.high.unwrap_or(1.);
                 let high_bound = into_finite_bound(high, range_step.include_high);
 
-                // Check this here because [`Standard`](rand::distributions::Standard) will panic
+                // Check this here because [`StandardUniform`](rand::distr::StandardUniform) will panic
                 // otherwise.
                 if !low.is_finite() || !high.is_finite() {
                     return Err(anyhow!("{} range with low={} high={} is invalid", stringify!($target), low, high));
                 }
 
-                // Check this here because [`Standard`](rand::distributions::Standard) will panic
+                // Check this here because [`StandardUniform`](rand::distr::StandardUniform) will panic
                 // otherwise.
                 if !(high - low).is_finite() {
                     return Err(anyhow!("{} range with low={} high={} has overflowed: try smaller bounds", stringify!($target), low, high))
@@ -279,7 +290,7 @@ macro_rules! standard_float_range_step_impl {
 
         impl Distribution<$target> for StandardFloatRangeStep<$target> {
             fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> $target {
-                let num = rng.gen_range(self.range.clone());
+                let num = rng.random_range(self.range.clone());
                 if let Some(step) = self.step.as_ref() {
                     // If `step` is defined, attempt to align to it
                     let low = self.low.as_ref().unwrap();

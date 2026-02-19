@@ -41,7 +41,7 @@ impl<'a, G: Generator> StructuredState<'a, G> {
         ordered.into_iter().chain(keys)
     }
 
-    pub(super) fn iter_ordered(&self) -> std::slice::Iter<String> {
+    pub(super) fn iter_ordered(&self) -> std::slice::Iter<'_, String> {
         self.ordering.iter()
     }
 

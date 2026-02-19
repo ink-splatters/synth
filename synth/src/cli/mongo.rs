@@ -4,7 +4,6 @@ use crate::sampler::SamplerOutput;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use mongodb::bson::Bson;
-use mongodb::options::FindOptions;
 use mongodb::{bson::Document, options::ClientOptions, sync::Client};
 use std::collections::BTreeMap;
 use synth_core::graph::prelude::content::number_content::U64;
@@ -29,7 +28,7 @@ pub struct MongoImportStrategy {
 
 impl ImportStrategy for MongoImportStrategy {
     fn import(&self) -> Result<Namespace> {
-        let client_options = ClientOptions::parse(&self.uri_string)?;
+        let client_options = ClientOptions::parse(&self.uri_string).run()?;
 
         info!("Connecting to database at {} ...", &self.uri_string);
 
@@ -42,17 +41,17 @@ impl ImportStrategy for MongoImportStrategy {
         let database = client.database(db_name);
 
         // 1: First pass - create master schema
-        for collection_name in database.list_collection_names(None)? {
-            let collection = database.collection(&collection_name);
+        for collection_name in database.list_collection_names().run()? {
+            let collection = database.collection::<Document>(&collection_name);
 
             // This may be useful later
             // let count = collection.estimated_document_count(None)?;
 
-            if let Ok(Some(some_obj)) = collection.find_one(None, None) {
+            if let Ok(Some(some_obj)) = collection.find_one(Document::new()).run() {
                 let as_array = Content::Array(ArrayContent::from_content_default_length(
                     doc_to_content(&some_obj),
                 ));
-                namespace.put_collection(collection_name, as_array)?;
+                namespace.put_collection(collection_name.to_string(), as_array)?;
             } else {
                 info!("Collection {} is empty. Skipping...", collection_name);
                 continue;
@@ -60,25 +59,26 @@ impl ImportStrategy for MongoImportStrategy {
         }
 
         // 2: Run an ingest step with 10 documents
-        for collection_name in database.list_collection_names(None)? {
-            let collection = database.collection(&collection_name);
+        for collection_name in database.list_collection_names().run()? {
+            let collection = database.collection::<Document>(&collection_name);
 
             // This may be useful later
             // let count = collection.estimated_document_count(None)?;
 
-            let mut find_options = FindOptions::default();
-            find_options.limit = Some(10);
-
             let mut random_sample: Vec<Document> = collection
-                .find(None, find_options)?
+                .find(Document::new())
+                .limit(10)
+                .run()?
                 .collect::<Result<Vec<Document>, _>>()?;
 
             random_sample.iter_mut().for_each(|doc| {
                 doc.remove("_id");
             });
 
-            namespace
-                .default_try_update(&collection_name, &serde_json::to_value(random_sample)?)?;
+            namespace.default_try_update(
+                &collection_name,
+                &serde_json::to_value(random_sample)?,
+            )?;
         }
 
         Ok(namespace)
@@ -120,7 +120,7 @@ fn bson_to_content(bson: &Bson) -> Content {
         Bson::Boolean(_) => Content::Bool(BoolContent::Categorical(Categorical::default())),
         Bson::Null => Content::null(),
         Bson::RegularExpression(regex) => Content::String(StringContent::Pattern(
-            RegexContent::pattern(regex.pattern.clone()).unwrap_or_default(),
+            RegexContent::pattern(regex.pattern.to_string()).unwrap_or_default(),
         )),
         Bson::JavaScriptCode(_) => {
             Content::String(StringContent::Categorical(Categorical::default()))
@@ -198,7 +198,8 @@ impl MongoExportStrategy {
         client
             .database(db_name)
             .collection(collection_name)
-            .insert_many(docs, None)?;
+            .insert_many(docs)
+            .run()?;
 
         info!(
             "Inserted {} rows into collection {} ...",
@@ -234,7 +235,7 @@ fn object_to_bson(obj: BTreeMap<String, Value>) -> Bson {
 }
 
 fn date_time_to_bson(datetime: ChronoValue) -> Bson {
-    Bson::DateTime(mongodb::bson::DateTime::from(match datetime {
+    let chrono_dt = match datetime {
         // those are not optimal as BSON doesn't have a way to specify dates or times, just both at once
         ChronoValue::NaiveDate(nd) => {
             DateTime::<Utc>::from_naive_utc_and_offset(nd.and_hms_opt(0, 0, 0).unwrap(), Utc)
@@ -245,7 +246,9 @@ fn date_time_to_bson(datetime: ChronoValue) -> Bson {
         ),
         ChronoValue::NaiveDateTime(ndt) => DateTime::<Utc>::from_naive_utc_and_offset(ndt, Utc),
         ChronoValue::DateTime(dt) => dt.into(),
-    }))
+    };
+    let sys_time: std::time::SystemTime = chrono_dt.into();
+    Bson::DateTime(mongodb::bson::DateTime::from(sys_time))
 }
 
 fn number_to_bson(number: Number) -> Bson {

@@ -1,6 +1,6 @@
 use super::prelude::*;
 
-use rand::distributions::Bernoulli;
+use rand::distr::Bernoulli;
 
 derive_generator! {
     yield bool,

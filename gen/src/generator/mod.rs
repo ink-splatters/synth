@@ -6,7 +6,7 @@ use crate::{GeneratorState, Never};
 use crate::Shared;
 
 use rand::{
-    distributions::{Distribution, Standard, WeightedIndex},
+    distr::{weighted::WeightedIndex, Distribution, StandardUniform},
     Rng,
 };
 
@@ -847,7 +847,7 @@ where
             }
             next.map_complete(|c| Some(c))
         } else {
-            self.include = rng.gen();
+            self.include = rng.random();
             if self.include {
                 self.next(rng)
             } else {
@@ -911,7 +911,7 @@ where
 
 /// A primitive random value generator that yields from a
 /// [`rand::Distribution`](rand::Distribution).
-pub struct Random<T, D = Standard>(D, PhantomData<T>);
+pub struct Random<T, D = StandardUniform>(D, PhantomData<T>);
 
 impl<D> Random<(), D> {
     /// Create a new seed from a distribution `D`.
@@ -926,9 +926,9 @@ impl<D> Random<(), D> {
 impl Random<()> {
     pub fn new<T>() -> Random<T>
     where
-        Standard: Distribution<T>,
+        StandardUniform: Distribution<T>,
     {
-        Random::new_with(Standard)
+        Random::new_with(StandardUniform)
     }
 }
 

@@ -1,5 +1,6 @@
 use super::super::prelude::*;
 use fake::faker::address::raw::*;
+use fake::faker::color::raw::*;
 use fake::faker::company::raw::*;
 use fake::faker::creditcard::raw::CreditCardNumber;
 use fake::faker::filesystem::raw::*;
@@ -43,7 +44,14 @@ macro_rules! fake_map_entry {
     };
     (with_locales; $name:ident, $rng:ident, $args:ident, $map:ident, $faker:ident; $($locale:ident),*) => {
         fn $name($rng: &mut dyn RngCore, $args: &FakerArgs) -> String {
-            match $args.locales.get($rng.gen_range(0..$args.locales.len().max(1))).unwrap_or(&Locale::EN) {
+            match $args
+                .locales
+                .get(rand::Rng::random_range(
+                    $rng,
+                    0..$args.locales.len().max(1),
+                ))
+                .unwrap_or(&Locale::EN)
+            {
                 $(Locale::$locale => $faker(locales::$locale).fake_with_rng($rng)),*
             }
         }
@@ -104,7 +112,7 @@ lazy_static! {
         fake_map_entry!(locale; buzzword, r, args, m, Buzzword);
         fake_map_entry!(locale; buzzword_muddle, r, args, m, BuzzwordMiddle);
         fake_map_entry!(locale; buzzword_tail, r, args, m, BuzzwordTail);
-        fake_map_entry!(locale; catch_phrase, r, args, m, CatchPhase);
+        fake_map_entry!(locale; catch_phrase, r, args, m, CatchPhrase);
         fake_map_entry!(locale; bs_verb, r, args, m, BsVerb);
         fake_map_entry!(locale; bs_adj, r, args, m, BsAdj);
         fake_map_entry!(locale; bs_noun, r, args, m, BsNoun);

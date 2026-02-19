@@ -3,9 +3,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use beau_collector::BeauCollector;
 use futures::future::join_all;
-use sqlx::{
-    query::Query, Arguments, Connection, Database, Encode, Executor, IntoArguments, Pool, Type,
-};
+use sqlx::{query::Query, Connection, Database, Encode, Executor, IntoArguments, Pool, Type};
 use synth_core::{Content, Value};
 use synth_gen::value::Number;
 
@@ -45,9 +43,11 @@ pub struct ValueWrapper(pub(crate) Value);
 /// All sqlx databases should define this trait and implement database specific queries in
 /// their own implementations.
 #[async_trait]
-pub trait SqlxDataSource: DataSource {
-    type DB: Database<Arguments = Self::Arguments, Connection = Self::Connection>;
-    type Arguments: for<'q> Arguments<'q, Database = Self::DB> + for<'q> IntoArguments<'q, Self::DB>;
+pub trait SqlxDataSource: DataSource
+where
+    for<'q> <Self::DB as Database>::Arguments<'q>: IntoArguments<'q, Self::DB>,
+{
+    type DB: Database<Connection = Self::Connection>;
     type Connection: Connection<Database = Self::DB>;
 
     const IDENTIFIER_QUOTE: char;
@@ -59,7 +59,10 @@ pub trait SqlxDataSource: DataSource {
     fn get_multithread_pool(&self) -> Pool<Self::DB>;
 
     /// Prepare a single query with data source specifics
-    fn query<'q>(&self, query: &'q str) -> Query<'q, Self::DB, Self::Arguments> {
+    fn query<'q>(
+        &self,
+        query: &'q str,
+    ) -> Query<'q, Self::DB, <Self::DB as Database>::Arguments<'q>> {
         sqlx::query(query)
     }
 

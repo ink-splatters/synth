@@ -3,7 +3,7 @@ use crate::datasource::relational_datasource::{
 };
 use crate::datasource::DataSource;
 use anyhow::{Context, Result};
-use async_std::task;
+use smol::block_on;
 use log::debug;
 use serde_json::Value;
 use sqlx::{Executor, Row};
@@ -36,7 +36,7 @@ where
     ValueWrapper: TryFrom<<T::DB as sqlx::Database>::Row, Error = anyhow::Error>,
     ColumnInfo: TryFrom<<T::DB as sqlx::Database>::Row, Error = anyhow::Error>,
 {
-    let table_names = task::block_on(get_table_names(datasource))
+    let table_names = block_on(get_table_names(datasource))
         .with_context(|| "Failed to get table names".to_string())?;
 
     let mut namespace = Namespace::default();
@@ -90,7 +90,7 @@ where
     for table_name in table_names.iter() {
         info!("Building {} collection...", table_name);
 
-        let column_infos = task::block_on(get_columns_info(datasource, table_name.to_string()))?;
+        let column_infos = block_on(get_columns_info(datasource, table_name.to_string()))?;
 
         namespace.put_collection(
             table_name.clone(),
@@ -113,7 +113,7 @@ where
     PrimaryKey: TryFrom<<T::DB as sqlx::Database>::Row, Error = anyhow::Error>,
 {
     for table_name in table_names.iter() {
-        let primary_keys = task::block_on(get_primary_keys(datasource, table_name.to_string()))?;
+        let primary_keys = block_on(get_primary_keys(datasource, table_name.to_string()))?;
 
         if primary_keys.len() > 1 {
             bail!(
@@ -179,7 +179,7 @@ where
     for<'c> &'c mut T::Connection: Executor<'c, Database = T::DB>,
     ForeignKey: TryFrom<<T::DB as sqlx::Database>::Row, Error = anyhow::Error>,
 {
-    let foreign_keys = task::block_on(get_foreign_keys(datasource))?;
+    let foreign_keys = block_on(get_foreign_keys(datasource))?;
 
     debug!("{} foreign keys found.", foreign_keys.len());
 
@@ -221,10 +221,10 @@ where
     for<'d> String: sqlx::Encode<'d, T::DB>,
     ValueWrapper: TryFrom<<T::DB as sqlx::Database>::Row, Error = anyhow::Error>,
 {
-    task::block_on(datasource.set_seed())?;
+    block_on(datasource.set_seed())?;
 
     for table_name in table_names {
-        let values = task::block_on(get_deterministic_samples(
+        let values = block_on(get_deterministic_samples(
             datasource,
             table_name.to_string(),
         ))?;

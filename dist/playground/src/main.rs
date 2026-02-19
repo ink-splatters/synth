@@ -34,8 +34,11 @@ pub struct ServeCmd {
     allow_origin: String,
 }
 
-#[async_std::main]
-async fn main() -> Result<()> {
+fn main() -> Result<()> {
+    smol::block_on(async_main())
+}
+
+async fn async_main() -> Result<()> {
     pretty_env_logger::init();
     match Args::from_args() {
         Args::Serve(serve_cmd) => {

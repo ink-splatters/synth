@@ -2,7 +2,7 @@ pub use synth_gen::prelude::*;
 pub use synth_gen::Error as GeneratorError;
 
 pub use rand::{
-    distributions::{
+    distr::{
         uniform::{SampleBorrow, SampleUniform, UniformDuration, UniformSampler},
         Distribution, Uniform,
     },

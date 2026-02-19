@@ -9,7 +9,7 @@ impl Generator for UuidGen {
     type Return = Never;
 
     fn next<R: Rng>(&mut self, rng: &mut R) -> GeneratorState<Self::Yield, Self::Return> {
-        let uuid = Uuid::from_u128(rng.gen());
-        GeneratorState::Yielded(uuid.to_hyphenated().to_string())
+        let uuid = Uuid::from_u128(rng.random());
+        GeneratorState::Yielded(uuid.hyphenated().to_string())
     }
 }

@@ -73,7 +73,7 @@ impl<'w> Cli {
             ));
         }
         match random {
-            true => Ok(rand::thread_rng().next_u64()),
+            true => Ok(rand::rng().next_u64()),
             false => Ok(seed.unwrap_or(0)),
         }
     }

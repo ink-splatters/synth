@@ -3,8 +3,8 @@ use crate::datasource::relational_datasource::{
 };
 use crate::datasource::DataSource;
 use anyhow::{Context, Result};
-use async_std::sync::Arc;
-use async_std::task;
+use smol::block_on;
+use std::sync::Arc;
 use async_trait::async_trait;
 use rust_decimal::prelude::ToPrimitive;
 use rust_decimal::Decimal;
@@ -34,7 +34,7 @@ impl DataSource for PostgresDataSource {
     type ConnectParams = PostgresConnectParams;
 
     fn new(connect_params: &Self::ConnectParams) -> Result<Self> {
-        task::block_on(async {
+        block_on(async {
             let schema = connect_params
                 .schema
                 .clone()
@@ -114,7 +114,6 @@ impl PostgresDataSource {
 #[async_trait]
 impl SqlxDataSource for PostgresDataSource {
     type DB = Postgres;
-    type Arguments = sqlx::postgres::PgArguments;
     type Connection = sqlx::postgres::PgConnection;
 
     const IDENTIFIER_QUOTE: char = '\"';
@@ -127,7 +126,10 @@ impl SqlxDataSource for PostgresDataSource {
         Pool::clone(&self.pool)
     }
 
-    fn query<'q>(&self, query: &'q str) -> sqlx::query::Query<'q, Self::DB, Self::Arguments> {
+    fn query<'q>(
+        &self,
+        query: &'q str,
+    ) -> sqlx::query::Query<'q, Self::DB, <Self::DB as sqlx::Database>::Arguments<'q>> {
         sqlx::query(query).bind(self.schema.clone())
     }
 

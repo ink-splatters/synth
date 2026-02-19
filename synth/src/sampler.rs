@@ -32,7 +32,8 @@ impl SamplerOutput {
 fn sampler_progress_bar(target: u64) -> ProgressBar {
     let bar = ProgressBar::new(target);
     let style = ProgressStyle::default_bar()
-        .template("[{elapsed_precise}] {wide_bar} {pos}/{len} generated ({eta} remaining)");
+        .template("[{elapsed_precise}] {wide_bar} {pos}/{len} generated ({eta} remaining)")
+        .expect("progress bar template should be valid");
     bar.set_style(style);
     bar
 }

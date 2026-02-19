@@ -1,8 +1,7 @@
 #[cfg(debug_assertions)]
 pub mod splash {
     use anyhow::Result;
-    use owo_colors::OwoColorize;
-    use sysinfo::{System, SystemExt};
+    use sysinfo::System;
 
     use crate::version::version;
 
@@ -49,10 +48,10 @@ arch        = {arch}
 threads     = {cpu}
 mem         = {mem}
 ",
-                synth_ver = self.synth_ver.blue().bold(),
-                path = self.path.bold(),
-                arch = self.arch.bold(),
-                os = self.os.bold(),
+                synth_ver = self.synth_ver,
+                path = self.path,
+                arch = self.arch,
+                os = self.os,
                 mem = self.mem,
                 cpu = num_cpus::get()
             )?;

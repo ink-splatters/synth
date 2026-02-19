@@ -40,8 +40,9 @@ impl State {
         // number of tokens the graph is allowed to generate to prevent
         // accidental or malicious blocking.
         let mut stream = Vec::new();
+        let mut rng = rand::rng();
         loop {
-            match graph.try_next(&mut OsRng) {
+            match graph.try_next(&mut rng) {
                 GeneratorState::Yielded(yielded) => {
                     if stream.len() > self.max_size {
                         warn!("aborting: too large");

@@ -18,7 +18,7 @@ fn bench_generate_10000_to_stdout() {
 }
 
 fn bench_generate_n_to_stdout(size: usize) {
-    async_std::task::block_on(async {
+    smol::block_on(async {
         let namespace = std::path::PathBuf::from("testing_harness/postgres/hospital_master");
         let args = Args::Generate(GenerateCommand {
             namespace,

@@ -6,8 +6,11 @@ use structopt::StructOpt;
 use synth::cli::Args;
 use synth::cli::Cli;
 
-#[async_std::main]
-async fn main() -> Result<()> {
+fn main() -> Result<()> {
+    smol::block_on(async_main())
+}
+
+async fn async_main() -> Result<()> {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("warn")).init();
     let args = Args::from_args();
     let cli = Cli::new()?;

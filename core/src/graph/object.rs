@@ -18,7 +18,7 @@ impl Generator for KeyValueOrNothing {
 
     fn next<R: Rng>(&mut self, rng: &mut R) -> GeneratorState<Self::Yield, Self::Return> {
         if !self.active {
-            if self.p >= rng.gen() {
+            if self.p >= rng.random() {
                 self.active = true;
                 self.next(rng)
             } else {

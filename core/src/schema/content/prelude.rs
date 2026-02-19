@@ -21,7 +21,7 @@ pub(super) use chrono::{
     DateTime, Duration, FixedOffset, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Utc,
 };
 pub(super) use rand::{
-    distributions::{Bernoulli, Distribution},
+    distr::{Bernoulli, Distribution},
     Rng,
 };
 pub(super) use rand_regex::{Error as RegexError, Regex as RandRegex};
